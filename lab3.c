@@ -1,21 +1,11 @@
-// Remember to change the exit value of the wrong case to -1 !!!
-/*
-Test the result stored in the "data_output" by a serial version of calculation
-
------
-Compiling:
-    "Lab3IO.c" should be included and "-lm" tag is needed, like
-    > gcc serialtester.c Lab3IO.c -o serialtester -lm
-*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include "Lab3IO.h"
-
-#define TOL 0.0005
-
-int main(int argc, char* argv[])
-{
+//****************************************************
+// modified from the serial solution in serialTester 
+//****************************************************
+int main(int argc, char* argv[]){
 	int i, j, k, size;
 	double** Au;
 	double* X;
@@ -23,22 +13,20 @@ int main(int argc, char* argv[])
 	int* index;
 	FILE* fp;
 
+    //get the number of threads
+    int thread_count = atoi(argv[1]);
+
 	/*Load the datasize and verify it*/
 	Lab3LoadInput(&Au, &size);
-	if ((fp = fopen("data_output","r")) == NULL){
-		printf("Fail to open the result data file!\n");
-		return 2;
-	}
-	fscanf(fp, "%d\n\n", &i);
-	if (i != size){
-		printf("The problem size of the input file and result file does not match!\n");
-		return -1;
-	}
 	/*Calculate the solution by serial code*/
 	X = CreateVec(size);
     index = malloc(size * sizeof(int));
-    for (i = 0; i < size; ++i)
+
+
+    # pragma omp parallel for num threads(thread_count)    
+    for (i = 0; i < size; ++i){
         index[i] = i;
+    }
 
     if (size == 1)
         X[0] = Au[0][1] / Au[0][0];
@@ -77,25 +65,11 @@ int main(int argc, char* argv[])
             X[k] = Au[index[k]][size] / Au[index[k]][k];
     }
 
-	/*compare the solution*/
-	error = 0;
-	Xnorm = 0;	
-	for (i = 0; i < size; ++i){
-		fscanf(fp, "%lf\t", &temp);
-		error += (temp-X[i]) * (temp-X[i]);
-		Xnorm += X[i]*X[i];
-	}
-	error = sqrt(error);
-	Xnorm = sqrt(Xnorm);
-	printf("The relative error to the reference solution is %e\n", error / Xnorm);
-	if (error / Xnorm <= TOL)
-		printf("Congratulation!!! Your result is accepted!\n");
-	else
-		printf("Sorry, your result is wrong.\n");
-	
-	fclose(fp);
+    Lab3SaveOutput(X, size, 10);
     DestroyVec(X);
     DestroyMat(Au, size);
     free(index);
 	return 0;	
+
+    return(0);
 }
