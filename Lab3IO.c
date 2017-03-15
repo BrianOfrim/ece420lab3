@@ -74,8 +74,10 @@ int Lab3SaveOutput(double* x, int size, double Time){
     }
 
     fprintf(op, "%d\n", size);
-    for (i = 0; i < size; ++i)
+    for (i = 0; i < size; ++i){
         fprintf(op, "%e\t", x[i]);
+	//printf("%d\t", x[i]);
+    }
     fprintf(op, "\n%lf", Time);
     fclose(op);
     return 0;

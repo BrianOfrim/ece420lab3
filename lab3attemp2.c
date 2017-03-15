@@ -15,8 +15,9 @@ int main(int argc, char* argv[]){
 	int* index;
 	FILE* fp;
 
-    //get the number of threads
-    int thread_count = atoi(argv[1]);
+    	//get the number of threads
+    	int thread_count = atoi(argv[1]);
+	omp_set_num_threads(thread_count);
 
 	/*Load the datasize and verify it*/
 	Lab3LoadInput(&Au, &size);
@@ -34,28 +35,52 @@ int main(int argc, char* argv[]){
         X[0] = Au[0][1] / Au[0][0];
     else{
         /*Gaussian elimination*/
+	#pragma omp parallel private(k)
         for (k = 0; k < size - 1; ++k){
-            /*Pivoting*/
-            temp = 0;
-            for (i = k, j = 0; i < size; ++i)
-                if (temp < Au[index[i]][k] * Au[index[i]][k]){
-                    temp = Au[index[i]][k] * Au[index[i]][k];
-                    j = i;
-                }
-            if (j != k)/*swap*/{
-                i = index[j];
-                index[j] = index[k];
-                index[k] = i;
-            }
-            /*calculating*/
-            for (i = k + 1; i < size; ++i){
-                temp = Au[index[i]][k] / Au[index[k]][k];
-                for (j = k; j < size + 1; ++j)
-                    Au[index[i]][j] -= Au[index[k]][j] * temp;
-            }       
+
+	//# pragma omp parallel private(i)
+		
+		    /*Pivoting*/
+		    temp = 0;
+		    j = 0;
+		    # pragma omp for private(i)
+		    for (i = k; i < size; ++i) {
+		       if (temp < Au[index[i]][k] * Au[index[i]][k]){
+                       # pragma omp critical
+		               { 
+		                    if (temp < Au[index[i]][k] * Au[index[i]][k]){
+		                        temp = Au[index[i]][k] * Au[index[i]][k];
+		                        j = i;
+		                    }
+		                }
+			}
+                    }
+
+		    #pragma omp single
+			{
+			    if (j != k)/*swap*/{
+				i = index[j];
+				index[j] = index[k];
+				index[k] = i;
+			    }
+			}
+		    
+		    /*calculating*/
+		    //#pragma omp parallel for
+		    for (i = k + 1; i < size; ++i){
+		        temp = Au[index[i]][k] / Au[index[k]][k];
+			#pragma omp for
+		        for (j = k; j < size + 1; ++j) {
+		            Au[index[i]][j] -= Au[index[k]][j] * temp;
+			}
+		    }
+		//#pragma omp barrier
+		       
         }
         /*Jordan elimination*/
+
         for (k = size - 1; k > 0; --k){
+	    #pragma omp parallel for private(temp)
             for (i = k - 1; i >= 0; --i ){
                 temp = Au[index[i]][k] / Au[index[k]][k];
                 Au[index[i]][k] -= temp * Au[index[k]][k];
@@ -63,6 +88,7 @@ int main(int argc, char* argv[]){
             } 
         }
         /*solution*/
+	#pragma omp parallel for
         for (k=0; k< size; ++k) {
             X[k] = Au[index[k]][size] / Au[index[k]][k];
 	    printf("%e\n", X[k]);
@@ -71,7 +97,7 @@ int main(int argc, char* argv[]){
     GET_TIME(end);
     printf("%f\n",(end-start));
     printf("%d\n", size);
-    Lab3SaveOutput(X, size, 10);
+    Lab3SaveOutput(X, size, (end-start));
     DestroyVec(X);
     DestroyMat(Au, size);
     free(index);

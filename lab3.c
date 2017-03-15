@@ -39,15 +39,17 @@ int main(int argc, char* argv[]){
         X[0] = Au[0][1] / Au[0][0];
     else{
         /*Gaussian elimination*/
-	# pragma omp parallel private(temp, i, k, j) shared(Au, size, index) num_threads(thread_count)
+	//# pragma omp parallel private(temp, i, k, j) num_threads(thread_count)
         for (k = 0; k < size - 1; ++k){
             /*Pivoting*/
 
 		
                 temp = 0;
 		j = 0;
-                # pragma omp for 
+		//printf("temp: %f\n",temp);
+                # pragma omp parallel for 
                 for (i = k; i < size; ++i){
+
                     if (temp < Au[index[i]][k] * Au[index[i]][k]){
                        # pragma omp critical
                        { 
@@ -58,30 +60,37 @@ int main(int argc, char* argv[]){
                         }
                     }
                 }
-	    
-            if (j != k)/*swap*/{
-                i = index[j];
-                index[j] = index[k];
-                index[k] = i;
-            }
+
+	    {
+		    if (j != k)/*swap*/{
+		        i = index[j];
+		        index[j] = index[k];
+		        index[k] = i;
+		    }
+	    }
 	    
             /*calculating*/
             //#pragma omp parallel for num_threads(thread_count) 
 
-            # pragma omp for 
+            //# pragma omp parallel for private(temp, i, k, j) num_threads(thread_count)
+	    //# pragma omp parallel for
             for (i = k + 1; i < size; ++i){
-                temp = Au[index[i]][k] / Au[index[k]][k];
+		//#pragma omp critical
+		//{
+                	temp = Au[index[i]][k] / Au[index[k]][k];
+		//}
+                //printf("%f\n", temp);
                 for (j = k; j < size + 1; ++j){
-			#pragma omp critical
-			{
+			//#pragma omp critical
+			//{
 		            Au[index[i]][j] -= Au[index[k]][j] * temp;
-			    //printf("%d\n", Au[index[i]][j]);
-			}
+			    //printf("%f\n", Au[index[i]][j]);
+			//}
                 }
             }       
         }
         /*Jordan elimination*/
-        //#pragma omp parallel num_threads(thread_count) private(k, i, temp) shared(Au, index, size) 
+       // #pragma omp parallel num_threads(thread_count) private(k, i, temp) shared(Au, index, size) 
         for (k = size - 1; k > 0; --k){
 	    //#pragma omp for
             for (i = k - 1; i >= 0; --i ){
@@ -94,11 +103,12 @@ int main(int argc, char* argv[]){
         //#pragma omp parallel for num_threads(thread_count) 
         for (k=0; k< size; ++k){
             X[k] = Au[index[k]][size] / Au[index[k]][k];
-	    printf("%d\n", X[k]);
+	    //printf("%d\n", (X[k]));
         }
     }
     GET_TIME(end);
     printf("%f\n",(end-start));
+    printf("%d\n", size);
     Lab3SaveOutput(X, size, 10);
     DestroyVec(X);
     DestroyMat(Au, size);
