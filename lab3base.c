@@ -63,8 +63,10 @@ int main(int argc, char* argv[]){
             } 
         }
         /*solution*/
-        for (k=0; k< size; ++k)
+        for (k=0; k< size; ++k) {
             X[k] = Au[index[k]][size] / Au[index[k]][k];
+	    printf("%d\n", X[k]);
+	}
     }
     GET_TIME(end);
     printf("%f\n",(end-start));
