@@ -27,6 +27,7 @@ int main(int argc, char* argv[]){
 
     // assign the indexes in parralel
     GET_TIME(start); 
+    # pragma omp for
     for (i = 0; i < size; ++i){
         index[i] = i;
     }
@@ -35,64 +36,64 @@ int main(int argc, char* argv[]){
         X[0] = Au[0][1] / Au[0][0];
     else{
         /*Gaussian elimination*/
-	#pragma omp parallel private(k)
-        for (k = 0; k < size - 1; ++k){
-
-	//# pragma omp parallel private(i)
+		// #pragma omp parallel
+    	for(k = 0; k < size - 1; ++k) {
 		
 		    /*Pivoting*/
 		    temp = 0;
 		    j = 0;
-		    # pragma omp for private(i)
+		    # pragma omp parallel for private(i)
 		    for (i = k; i < size; ++i) {
 		       if (temp < Au[index[i]][k] * Au[index[i]][k]){
-                       # pragma omp critical
-		               { 
-		                    if (temp < Au[index[i]][k] * Au[index[i]][k]){
-		                        temp = Au[index[i]][k] * Au[index[i]][k];
-		                        j = i;
-		                    }
-		                }
-			}
-                    }
+                     # pragma omp critical
+	                 { 
+	                    if (temp < Au[index[i]][k] * Au[index[i]][k]){
+	                        temp = Au[index[i]][k] * Au[index[i]][k];
+	                        j = i;
+	                    }
+	                 }
+				}
+            }
 
-		    #pragma omp single
-			{
-			    if (j != k)/*swap*/{
+		 //    #pragma omp single
+			// {
+		    if (j != k)/*swap*/{
 				i = index[j];
 				index[j] = index[k];
 				index[k] = i;
-			    }
-			}
+		    }
+			// }
 		    
 		    /*calculating*/
-		    //#pragma omp parallel for
+		    #pragma omp parallel for private(i,temp,j)
 		    for (i = k + 1; i < size; ++i){
 		        temp = Au[index[i]][k] / Au[index[k]][k];
-			#pragma omp for
+				//#pragma omp for
 		        for (j = k; j < size + 1; ++j) {
 		            Au[index[i]][j] -= Au[index[k]][j] * temp;
-			}
-		    }
-		//#pragma omp barrier
-		       
-        }
+				}
+		    }   
+		    // #pragma omp single
+		    // {  
+		    // 	k++;
+		    // }
+    	}
         /*Jordan elimination*/
-
-        for (k = size - 1; k > 0; --k){
-	    #pragma omp parallel for private(temp)
-            for (i = k - 1; i >= 0; --i ){
-                temp = Au[index[i]][k] / Au[index[k]][k];
-                Au[index[i]][k] -= temp * Au[index[k]][k];
-                Au[index[i]][size] -= temp * Au[index[k]][size];
-            } 
-        }
-        /*solution*/
-	#pragma omp parallel for
-        for (k=0; k< size; ++k) {
-            X[k] = Au[index[k]][size] / Au[index[k]][k];
-	    printf("%e\n", X[k]);
-	}
+        #pragma omp parallel for private(temp, k, i)
+	    for (k = size - 1; k > 0; --k){
+	    // #pragma omp parallel for private(temp)
+	        for (i = k - 1; i >= 0; --i ){
+	            temp = Au[index[i]][k] / Au[index[k]][k];
+	            Au[index[i]][k] -= temp * Au[index[k]][k];
+	            Au[index[i]][size] -= temp * Au[index[k]][size];
+	        } 
+	    }
+	        /*solution*/
+		#pragma omp parallel for
+	        for (k=0; k< size; ++k) {
+	            X[k] = Au[index[k]][size] / Au[index[k]][k];
+		    printf("%e\n", X[k]);
+		}
     }
     GET_TIME(end);
     printf("%f\n",(end-start));
