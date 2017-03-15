@@ -2,10 +2,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include "Lab3IO.h"
+#include "timer.h"
 //****************************************************
 // modified from the serial solution in serialTester 
 //****************************************************
 int main(int argc, char* argv[]){
+    double start,end;
+    
+
 	int i, j, k, size;
 	double** Au;
 	double* X;
@@ -22,8 +26,9 @@ int main(int argc, char* argv[]){
 	X = CreateVec(size);
     index = malloc(size * sizeof(int));
 
-
-    # pragma omp parallel for num threads(thread_count)    
+    GET_TIME(start);
+    // assign the indexes in parralel
+    # pragma omp parallel for num_threads(thread_count)    
     for (i = 0; i < size; ++i){
         index[i] = i;
     }
@@ -34,25 +39,38 @@ int main(int argc, char* argv[]){
         /*Gaussian elimination*/
         for (k = 0; k < size - 1; ++k){
             /*Pivoting*/
-            temp = 0;
-            for (i = k, j = 0; i < size; ++i)
-                if (temp < Au[index[i]][k] * Au[index[i]][k]){
-                    temp = Au[index[i]][k] * Au[index[i]][k];
-                    j = i;
+            # pragma omp parallel private(temp) num_threads(thread_count)
+            {
+                temp = 0;
+                # pragma omp for
+                for (i = k, j = 0; i < size; ++i){
+                    if (temp < Au[index[i]][k] * Au[index[i]][k]){
+                        # pragma critical
+                        {
+                            if (temp < Au[index[i]][k] * Au[index[i]][k]){
+                                temp = Au[index[i]][k] * Au[index[i]][k];
+                                j = i;
+                            }
+                        }
+                    }
                 }
+            }
             if (j != k)/*swap*/{
                 i = index[j];
                 index[j] = index[k];
                 index[k] = i;
             }
             /*calculating*/
+            #pragma omp parallel for num_threads(thread_count)  
             for (i = k + 1; i < size; ++i){
                 temp = Au[index[i]][k] / Au[index[k]][k];
-                for (j = k; j < size + 1; ++j)
+                for (j = k; j < size + 1; ++j){
                     Au[index[i]][j] -= Au[index[k]][j] * temp;
+                }
             }       
         }
         /*Jordan elimination*/
+        #pragma omp parallel for num_threads(thread_count) 
         for (k = size - 1; k > 0; --k){
             for (i = k - 1; i >= 0; --i ){
                 temp = Au[index[i]][k] / Au[index[k]][k];
@@ -61,15 +79,18 @@ int main(int argc, char* argv[]){
             } 
         }
         /*solution*/
-        for (k=0; k< size; ++k)
+        #pragma omp parallel for num_threads(thread_count) 
+        for (k=0; k< size; ++k){
             X[k] = Au[index[k]][size] / Au[index[k]][k];
+        }
     }
-
+    GET_TIME(end);
+    printf("%f\n",(end-start));
     Lab3SaveOutput(X, size, 10);
     DestroyVec(X);
     DestroyMat(Au, size);
     free(index);
-	return 0;	
+
 
     return(0);
 }
