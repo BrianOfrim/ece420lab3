@@ -1,0 +1,10 @@
+To compile the code simply type make into the command line and the make file will run
+To executable will be named main
+To run the code type the following:
+./main num_threads
+where num_threads is an integer number of threads you wish to run
+
+Source:
+	We used the serial implemenatation of Gauss Jordan elimination from serial tester as our base
+
+Written by Justin Ferris and Brian Ofrim
