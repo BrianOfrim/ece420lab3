@@ -79,9 +79,9 @@ int main(int argc, char* argv[]){
 		    // }
     	}
         /*Jordan elimination*/
-        #pragma omp parallel for private(temp, k, i)
+        //#pragma omp parallel for private(temp, k, i)
 	    for (k = size - 1; k > 0; --k){
-	    // #pragma omp parallel for private(temp)
+	     #pragma omp parallel for private(temp)	
 	        for (i = k - 1; i >= 0; --i ){
 	            temp = Au[index[i]][k] / Au[index[k]][k];
 	            Au[index[i]][k] -= temp * Au[index[k]][k];
